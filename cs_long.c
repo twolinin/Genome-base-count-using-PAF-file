@@ -3,73 +3,63 @@
 int main()
 {
     char in;
-    int cat=0;
 
-    int insertion_flag = 0;
     int insertion_num  = 0;
     int insertion_base = 0;
 
-    int deletion_flag  = 0;
     int deletion_num   = 0;
     int deletion_base  = 0;
 
     while(scanf("%c",&in)!=EOF)
     {
-        cat = 0;
-        insertion_flag = 0;
-        deletion_flag = 0;
+        int cat = 0;
+        int tmp_in = 0;
+        int tmp_dn = 0;
 
         //find cs:Z:=
         while(cat<5)
         {
             scanf("%c",&in);
-            if( in == 'c' )
-                cat++;
-            else if( in == 's' )
-                cat++;
-            else if( in == ':' )
-                cat++;
-            else if( in == 'Z' )
+            if( in == 'c' || in == 's' || in == ':' || in == 'Z' )
                 cat++;
             else
                 cat = 0;
-
         }
 
-        int tmp_in = 0;
-        int tmp_dn = 0;
+        scanf("%c",&in);
 
         while( in != '\n' )
         {
-            scanf("%c",&in);
-
+            //printf("%c",in);
             if( in == '+' )
             {
-                insertion_flag = 1;
-                deletion_flag  = 0;
                 insertion_num++;
+                while(scanf("%c",&in)!=EOF)
+                {
+                    if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
+                        break;
+                    insertion_base++;
+                    tmp_in++;
+                }
             }
-            else if( in == '-' )
+            if( in == '-' )
             {
-                deletion_flag  = 1;
-                insertion_flag = 0;
                 deletion_num++;
+                while(scanf("%c",&in)!=EOF)
+                {
+                    if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
+                        break;
+                    deletion_base++;
+                    tmp_dn++;
+                }
             }
-            else if( in == '=' || in == '*' )
+            if( in == '=' || in == '*' )
             {
-                insertion_flag = 0;
-                deletion_flag  = 0;
-            }
-            else if(insertion_flag)
-            {
-                insertion_base++;
-                tmp_in++;
-            }
-
-            else if(deletion_flag)
-            {
-                deletion_base++;
-                tmp_dn++;
+                while(scanf("%c",&in)!=EOF)
+                {
+                    if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
+                        break;
+                }
             }
         }
 
