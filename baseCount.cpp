@@ -227,6 +227,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
+        return 0;
     }
 
     genome.passPAF( argc , argv , "raw" );
