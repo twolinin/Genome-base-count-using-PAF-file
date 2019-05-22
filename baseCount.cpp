@@ -199,7 +199,36 @@ int main(int argc, char* argv[])
     Genome genome;
 
     genome.loadDraft( argc-- , argv++ );
+
     genome.passPAF( argc-- , argv++ , "ref" );
+    if(argc==1)
+    {
+        for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
+        {
+            for(int i =0 ; i < (*output_iter).sequence.length() ; i++ )
+            {
+                std::cout << (*output_iter).contig_name << "\t"
+                          << i << "\t"
+                          << (*output_iter).sequence[i] << "\t";
+
+                (*output_iter).ref_align.base_count[i].show(true);
+
+                std::vector<Base_allele>::iterator ref_insert_iter = (*output_iter).ref_align.base_count[i].InsertionVec.begin();
+                int ref_insert_size = (*output_iter).ref_align.base_count[i].InsertionVec.size();
+
+                for( ref_insert_iter; ref_insert_size > 0 ; ++ref_insert_iter, ref_insert_size--)
+                {
+                    std::cout << (*output_iter).contig_name << "\t"
+                              << i << "\t"
+                              << (*output_iter).sequence[i] << "\t";
+
+                    if(ref_insert_size>0)
+                        (*ref_insert_iter).show(true);
+                }
+            }
+        }
+    }
+
     genome.passPAF( argc , argv , "raw" );
 
     for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
