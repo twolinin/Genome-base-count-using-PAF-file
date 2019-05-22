@@ -1,200 +1,245 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <assert.h>
+#include "baseCount.h"
 
-struct Base_allele;
-struct Chromosome;
-typedef std::vector<Chromosome> Chromosomes;
 
-struct Base_allele
+bool PAF_format::OperatorSign(int position)
 {
-    int A;
-    int T;
-    int C;
-    int G;
-    int Insertion;
-    int Deletion;
-};
+    if( ciga[position] == '=' || ciga[position] == '+' ||
+        ciga[position] == '-' || ciga[position] == '*')
+         return true;
 
-struct Chromosome
+    return false;
+}
+
+bool Base_allele::initial()
 {
-    std::string contig_name;
-    std::string sequence;
-    Base_allele *base_count;
-};
+    Deletion  = 0 ;
+    Insertion = 0 ;
+    A = 0 ;
+    T = 0 ;
+    C = 0 ;
+    G = 0 ;
+    return false;
+}
 
-int main(int argc, char* argv[])
+void Base_allele::show(bool EOL)
+{
+    std::cout << A << "\t" << T << "\t" << C << "\t" << G << "\t"
+              << Deletion  << "\t" << Insertion << (EOL ? "\n" : "\t");
+}
+
+void Base_allele::add_allele(char allele)
+{
+    if( allele == '-' )Deletion++;
+    else if( allele == '+' )Insertion++;
+    else if( allele == 'A' || allele == 'a' )A++;
+    else if( allele == 'T' || allele == 't' )T++;
+    else if( allele == 'C' || allele == 'c' )C++;
+    else if( allele == 'G' || allele == 'g' )G++;
+}
+
+void Align::counter(char allele, int& position)
+{
+    base_count[position].add_allele(allele);
+    allele == '+' ? position : position++;
+}
+
+void Genome::loadDraft(int argc, char* argv[])
 {
     std::ifstream draft_genome(argv[1]);
-    std::ifstream raw_to_draft_paf(argv[2]);
-
-    Chromosomes chr_vec;
-    std::string contig_name,sequence;
-
-    while(draft_genome && draft_genome.is_open())
+    // create arrays of draft genome sizes to store alignment info
+    while( draft_genome && draft_genome.is_open() )
     {
-        Chromosome temp;
+        Contig* current_contig = new Contig();
 
-        draft_genome >> temp.contig_name;
-        draft_genome >> temp.sequence;
-
-        if( temp.contig_name.length()==0 || temp.sequence.length()==0 ) break;
-
-        temp.contig_name = temp.contig_name.substr(1,temp.contig_name.length()-1);
-
-        temp.base_count = new Base_allele[temp.sequence.length()];
-
-        //std::cout << "contig_name" << temp.contig_name << "\n";
-        //std::cout << "len " <<temp.sequence.length() << "\n";
-
-        chr_vec.push_back(temp);
+        draft_genome >> (*current_contig).contig_name;
+        draft_genome >> (*current_contig).sequence;
+        // check current contig not empty line
+        if( (*current_contig).contig_name.length()==0 || (*current_contig).sequence.length()==0 )break;
+        // split '>'
+        (*current_contig).contig_name = (*current_contig).contig_name.substr(1,(*current_contig).contig_name.length()-1);
+        // create two arrays to store alignment infomation
+        (*current_contig).ref_align.base_count = new Base_allele[(*current_contig).sequence.length()];
+        (*current_contig).raw_align.base_count = new Base_allele[(*current_contig).sequence.length()];
+        // initial all array
+        for( int i = 0 ; i < (*current_contig).sequence.length() ; i++ )
+            (*current_contig).ref_align.base_count[i].initial()?:
+            (*current_contig).raw_align.base_count[i].initial();
+        // push current contig/chromosome
+        contigs.push_back((*current_contig));
+        //std::cout << (*current_contig).contig_name << "\t" << (*current_contig).sequence.length() <<"\n";
     }
+}
 
-    while(raw_to_draft_paf && raw_to_draft_paf.is_open())
+void Genome::passPAF(int argc, char* argv[], std::string source)
+{
+    std::ifstream paf_file(argv[1]);
+
+    while( paf_file && paf_file.is_open() )
     {
-        std::string query_name;
-        int query_length;
-        int query_start;
-        int query_end;
-        char strand;
-        std::string target_name;
-        int target_length;
-        int target_start;
-        int target_end;
-        int residue_matches;
-        int alignment_block_length;
-        int mapping_quality;
+        PAF_format paf;
 
-        raw_to_draft_paf >> query_name;
-        raw_to_draft_paf >> query_length;
-        raw_to_draft_paf >> query_start;
-        raw_to_draft_paf >> query_end;
-        raw_to_draft_paf >> strand;
-        raw_to_draft_paf >> target_name;
-        raw_to_draft_paf >> target_length;
-        raw_to_draft_paf >> target_start;
-        raw_to_draft_paf >> target_end;
-        raw_to_draft_paf >> residue_matches;
-        raw_to_draft_paf >> alignment_block_length;
-        raw_to_draft_paf >> mapping_quality;
+        paf_file >> paf.query_name;
+        paf_file >> paf.query_length;
+        paf_file >> paf.query_start;
+        paf_file >> paf.query_end;
+        paf_file >> paf.strand;
+        paf_file >> paf.target_name;
+        paf_file >> paf.target_length;
+        paf_file >> paf.target_start;
+        paf_file >> paf.target_end;
+        paf_file >> paf.residue_matches;
+        paf_file >> paf.alignment_block_length;
+        paf_file >> paf.mapping_quality;
 
-        if( query_name.length() == 0 ) break;
+        if( paf.query_name.length() == 0 ) break;
 
-        /*
-        std::cout << query_name  << "\t" << query_start  << "\t" << query_end  << "\t"
-                  << target_name << "\t" << target_start << "\t" << target_end << "\t"
-                  << strand << "\n";
-        */
+        //std::cout << paf.query_name  << "\t" << paf.query_start  << "\t" << paf.query_end  << "\t"
+        //          << paf.target_name << "\t" << paf.target_start << "\t" << paf.target_end << "\t"
+        //          << paf.strand << "\n";
 
-        while(raw_to_draft_paf && raw_to_draft_paf.is_open())
+        while(paf_file && paf_file.is_open())
         {
-            std::string ciga;
             std::string identity_ciga;
-            raw_to_draft_paf >> ciga;
-            identity_ciga = ciga.substr(0,5);
+            paf_file >> paf.ciga;
+            identity_ciga = paf.ciga.substr(0,5);
 
             if(!identity_ciga.compare("cs:Z:"))
             {
+                std::vector<Contig>::iterator contig_iter;
 
-                //std::cout<<identity_ciga<<"\n";
-                //std::cout<<ciga<<"\n";
-
-                std::vector<Chromosome>::iterator chr_iter;
-
-                for( chr_iter = chr_vec.begin(); chr_iter != chr_vec.end(); ++chr_iter )
-                    if( (*chr_iter).contig_name == target_name )
+                for( contig_iter = contigs.begin(); contig_iter != contigs.end(); ++contig_iter )
+                    if( (*contig_iter).contig_name == paf.target_name )
                         break;
 
-                //std::cout<< target_name << "\t" << strand << "\n";
+                Align* ref_align = &(*contig_iter).ref_align;
+                Align* raw_align = &(*contig_iter).raw_align;
 
                 int i=5;
-                while(i < ciga.length())
+                while( i < paf.ciga.length() )
                 {
-                    if( ciga[i] == '=' )
+                    if( paf.ciga[i] == '=' || paf.ciga[i] == '-' )
                     {
-                        //std::cout << i << " =\n";
+                        bool del = paf.ciga[i] == '-';
                         while(1)
                         {
                             i++;
-                            if( ciga[i] == '=' || ciga[i] == '-' || ciga[i] == '+' || ciga[i] == '*' || i >= ciga.length())
-                                break;
-                            else if( ciga[i] == 'A' || ciga[i] == 'a' )
-                                (*chr_iter).base_count[target_start].A++;
-                            else if( ciga[i] == 'T' || ciga[i] == 't' )
-                                (*chr_iter).base_count[target_start].T++;
-                            else if( ciga[i] == 'C' || ciga[i] == 'c' )
-                                (*chr_iter).base_count[target_start].C++;
-                            else if( ciga[i] == 'G' || ciga[i] == 'g' )
-                                (*chr_iter).base_count[target_start].G++;
+                            if( paf.OperatorSign(i) || i >= paf.ciga.length() ) break;
 
-                            //std::cout << ciga.length() << " " << i <<" = t" << (*chr_iter).sequence[target_start] << " c"<< ciga[i] << "\n";
-
-                            target_start++;
+                            source == "ref" ? (*ref_align).counter( del ? '-' : paf.ciga[i], paf.target_start )
+                                            : (*raw_align).counter( del ? '-' : paf.ciga[i], paf.target_start );
                         }
                     }
-                    else if( ciga[i] == '-' )
+                    else if( paf.ciga[i] == '*' )
                     {
-                        //std::cout << i << " -\n";
+                        i+=3;
+                        source == "ref" ? (*ref_align).counter(paf.ciga[i-1],paf.target_start)
+                                        : (*raw_align).counter(paf.ciga[i-1],paf.target_start);
+                    }
+
+                    else if( paf.ciga[i] == '+' )
+                    {
+                        std::vector<Base_allele>::iterator insert_ref_iter = (*ref_align).base_count[paf.target_start].InsertionVec.begin();
+                        std::vector<Base_allele>::iterator insert_raw_iter = (*raw_align).base_count[paf.target_start].InsertionVec.begin();
+                        int ref_vec_size = (*ref_align).base_count[paf.target_start].InsertionVec.size();
+                        int raw_vec_size = (*raw_align).base_count[paf.target_start].InsertionVec.size();
+                        int ref_vec_position = 0;
+                        int raw_vec_position = 0;
+
                         while(1)
                         {
                             i++;
-                            if( ciga[i] == '=' || ciga[i] == '-' || ciga[i] == '+' || ciga[i] == '*' )
-                                break;
-                            //std::cout << i << " - " << ciga[i] <<"\n";
-                            (*chr_iter).base_count[target_start].Deletion++;
-                            target_start++;
+                            if(paf.OperatorSign(i) || i >= paf.ciga.length()) break;
+                            if(source == "ref")
+                            {
+                                if( ref_vec_position < ref_vec_size )
+                                {
+                                    (*insert_ref_iter).add_allele(paf.ciga[i]);
 
+                                    insert_ref_iter++;
+                                    ref_vec_position++;
+                                }
+                                else
+                                {
+                                    Base_allele* temp = new Base_allele();
+                                    (*temp).add_allele(paf.ciga[i]);
+                                    (*ref_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
+                                }
+
+                                (*ref_align).counter('+',paf.target_start);
+                            }
+                            else
+                            {
+                                if( raw_vec_position < raw_vec_size )
+                                {
+                                    (*insert_raw_iter).add_allele(paf.ciga[i]);
+
+                                    insert_raw_iter++;
+                                    raw_vec_position++;
+                                }
+                                else
+                                {
+                                    Base_allele* temp = new Base_allele();
+                                    (*temp).add_allele(paf.ciga[i]);
+                                    (*raw_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
+                                }
+
+                                (*raw_align).counter('+',paf.target_start);
+                            }
                         }
-                    }
-                    else if( ciga[i] == '+' )
-                    {
-                        //std::cout << i << " +\n";
-                        while(1)
-                        {
-                            i++;
-                            if( ciga[i] == '=' || ciga[i] == '-' || ciga[i] == '+' || ciga[i] == '*' )
-                                break;
-                            (*chr_iter).base_count[target_start].Insertion++;
-                        }
-                    }
-                    else if( ciga[i] == '*' )
-                    {
-                        //std::cout << i << "*\n";
-                        i+=2;
-                        if( ciga[i] == 'A' || ciga[i] == 'a' )
-                            (*chr_iter).base_count[target_start].A++;
-                        else if( ciga[i] == 'T' || ciga[i] == 't' )
-                            (*chr_iter).base_count[target_start].T++;
-                        else if( ciga[i] == 'C' || ciga[i] == 'c' )
-                            (*chr_iter).base_count[target_start].C++;
-                        else if( ciga[i] == 'G' || ciga[i] == 'g' )
-                            (*chr_iter).base_count[target_start].G++;
-                        i++;
-                        target_start++;
                     }
                 }
                 break;
             }
         }
-
-
     }
+}
 
-    for(std::vector<Chromosome>::iterator output_iter = chr_vec.begin(); output_iter != chr_vec.end(); ++output_iter)
+int main(int argc, char* argv[])
+{
+    Genome genome;
+
+    genome.loadDraft( argc-- , argv++ );
+    genome.passPAF( argc-- , argv++ , "ref" );
+    genome.passPAF( argc , argv , "raw" );
+
+    for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
     {
         for(int i =0 ; i < (*output_iter).sequence.length() ; i++ )
         {
-            std::cout << (*output_iter).contig_name     << "\t"
+            std::cout << (*output_iter).contig_name << "\t"
                       << i << "\t"
-                      << (*output_iter).sequence[i] << "\t"
-                      << (*output_iter).base_count[i].A << "\t"
-                      << (*output_iter).base_count[i].T << "\t"
-                      << (*output_iter).base_count[i].C << "\t"
-                      << (*output_iter).base_count[i].G << "\t"
-                      << (*output_iter).base_count[i].Deletion  << "\t"
-                      << (*output_iter).base_count[i].Insertion << "\n";
+                      << (*output_iter).sequence[i] << "\t";
+
+            (*output_iter).ref_align.base_count[i].show(false);
+            (*output_iter).raw_align.base_count[i].show(true);
+
+            std::vector<Base_allele>::iterator ref_insert_iter = (*output_iter).ref_align.base_count[i].InsertionVec.begin();
+            std::vector<Base_allele>::iterator raw_insert_iter = (*output_iter).raw_align.base_count[i].InsertionVec.begin();
+            int ref_insert_size = (*output_iter).ref_align.base_count[i].InsertionVec.size();
+            int raw_insert_size = (*output_iter).raw_align.base_count[i].InsertionVec.size();
+
+            for( ref_insert_iter, raw_insert_iter ;
+                 ref_insert_size > 0 || raw_insert_size > 0 ;
+                 ++ref_insert_iter, ++raw_insert_iter, ref_insert_size--, raw_insert_size-- )
+            {
+                std::cout << (*output_iter).contig_name << "\t"
+                          << i << "\t"
+                          << (*output_iter).sequence[i] << "\t";
+
+                if(ref_insert_size>0)
+                    (*ref_insert_iter).show(false);
+                else
+                    std::cout << "0\t0\t0\t0\t0\t0\t";
+
+                if(raw_insert_size>0)
+                    (*raw_insert_iter).show(true);
+                else
+                    std::cout << "0\t0\t0\t0\t0\t0\n";
+            }
+
+
         }
+
     }
 
     return 0;
