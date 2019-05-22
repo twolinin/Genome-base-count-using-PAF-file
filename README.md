@@ -1,5 +1,7 @@
 # create paf file using minimap2
+
 --cs=long is necessary parameter
+
 	minimap2 --cs=long -x asm5  draft_genome.fasta truth.fasta  > truth_to_draft.paf
 	minimap2 --cs=long  draft_genome.fasta raw_read.fasta  > raw_to_draft.paf
 
