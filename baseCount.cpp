@@ -10,7 +10,7 @@ bool PAF_format::OperatorSign(int position)
     return false;
 }
 
-bool Base_allele::initial()
+void Base_allele::initial()
 {
     Deletion  = 0 ;
     Insertion = 0 ;
@@ -18,7 +18,6 @@ bool Base_allele::initial()
     T = 0 ;
     C = 0 ;
     G = 0 ;
-    return false;
 }
 
 void Base_allele::show(bool EOL)
@@ -50,9 +49,13 @@ void Genome::loadDraft(int argc, char* argv[])
     while( draft_genome && draft_genome.is_open() )
     {
         Contig* current_contig = new Contig();
-
         draft_genome >> (*current_contig).contig_name;
         draft_genome >> (*current_contig).sequence;
+		
+		//std::cout << "create array " << "\t"
+		//          << (*current_contig).contig_name << "\t" 
+		//          << (*current_contig).sequence.length() << "\n";
+		
         // check current contig not empty line
         if( (*current_contig).contig_name.length()==0 || (*current_contig).sequence.length()==0 )break;
         // split '>'
@@ -62,8 +65,10 @@ void Genome::loadDraft(int argc, char* argv[])
         (*current_contig).raw_align.base_count = new Base_allele[(*current_contig).sequence.length()];
         // initial all array
         for( int i = 0 ; i < (*current_contig).sequence.length() ; i++ )
-            (*current_contig).ref_align.base_count[i].initial()?:
+		{
+            (*current_contig).ref_align.base_count[i].initial();
             (*current_contig).raw_align.base_count[i].initial();
+		}
         // push current contig/chromosome
         contigs.push_back((*current_contig));
         //std::cout << (*current_contig).contig_name << "\t" << (*current_contig).sequence.length() <<"\n";
@@ -117,12 +122,12 @@ void Genome::passPAF(int argc, char* argv[], std::string source)
                 int i=5;
                 while( i < paf.ciga.length() )
                 {
-                    if( paf.ciga[i] == '=' || paf.ciga[i] == '-' )
+					if( paf.ciga[i] == '=' || paf.ciga[i] == '-' )
                     {
                         bool del = paf.ciga[i] == '-';
                         while(1)
                         {
-                            i++;
+							i++;
                             if( paf.OperatorSign(i) || i >= paf.ciga.length() ) break;
 
                             source == "ref" ? (*ref_align).counter( del ? '-' : paf.ciga[i], paf.target_start )

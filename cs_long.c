@@ -1,7 +1,10 @@
 #include<stdio.h>
+#include<stdlib.h>
 
-int main()
+int main(int argc, char* argv[])
 {
+    FILE *fp;
+
     char in;
 
     int insertion_num  = 0;
@@ -10,7 +13,9 @@ int main()
     int deletion_num   = 0;
     int deletion_base  = 0;
 
-    while(scanf("%c",&in)!=EOF)
+    fp = fopen(argv[1], "r");
+
+    while(fscanf(fp,"%c",&in)!=EOF)
     {
         int cat = 0;
         int tmp_in = 0;
@@ -19,14 +24,14 @@ int main()
         //find cs:Z:=
         while(cat<5)
         {
-            scanf("%c",&in);
+            fscanf(fp,"%c",&in);
             if( in == 'c' || in == 's' || in == ':' || in == 'Z' )
                 cat++;
             else
                 cat = 0;
         }
 
-        scanf("%c",&in);
+        fscanf(fp,"%c",&in);
 
         while( in != '\n' )
         {
@@ -34,7 +39,7 @@ int main()
             if( in == '+' )
             {
                 insertion_num++;
-                while(scanf("%c",&in)!=EOF)
+                while(fscanf(fp,"%c",&in)!=EOF)
                 {
                     if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
                         break;
@@ -45,7 +50,7 @@ int main()
             if( in == '-' )
             {
                 deletion_num++;
-                while(scanf("%c",&in)!=EOF)
+                while(fscanf(fp,"%c",&in)!=EOF)
                 {
                     if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
                         break;
@@ -55,7 +60,7 @@ int main()
             }
             if( in == '=' || in == '*' )
             {
-                while(scanf("%c",&in)!=EOF)
+                while(fscanf(fp,"%c",&in)!=EOF)
                 {
                     if( in == '+' || in == '-' || in == '=' || in == '*' || in == '\n' )
                         break;
@@ -63,7 +68,7 @@ int main()
             }
         }
 
-        printf("%d %d\n",tmp_in,tmp_dn);
+        //printf("%d %d\n",tmp_in,tmp_dn);
 
     }
 
