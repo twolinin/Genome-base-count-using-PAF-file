@@ -75,7 +75,7 @@ void Genome::loadDraft(int argc, char* argv[])
     }
 }
 
-void Genome::passPAF(int argc, char* argv[], std::string source)
+void Genome::parsePAF(int argc, char* argv[], std::string source)
 {
     std::ifstream paf_file(argv[1]);
 
@@ -144,19 +144,40 @@ void Genome::passPAF(int argc, char* argv[], std::string source)
                     else if( paf.ciga[i] == '+' )
                     {
                         std::vector<Base_allele>::iterator insert_ref_iter = (*ref_align).base_count[paf.target_start].InsertionVec.begin();
-                        std::vector<Base_allele>::iterator insert_raw_iter = (*raw_align).base_count[paf.target_start].InsertionVec.begin();
+						//std::vector<Base_allele>::iterator insert_ref_iter_end = (*ref_align).base_count[paf.target_start].InsertionVec.end();
                         int ref_vec_size = (*ref_align).base_count[paf.target_start].InsertionVec.size();
-                        int raw_vec_size = (*raw_align).base_count[paf.target_start].InsertionVec.size();
                         int ref_vec_position = 0;
+						bool vector_not_full = false;
+						
+						std::vector<Base_allele>::iterator insert_raw_iter = (*raw_align).base_count[paf.target_start].InsertionVec.begin();
+						int raw_vec_size = (*raw_align).base_count[paf.target_start].InsertionVec.size();
                         int raw_vec_position = 0;
-
+						
+						if(source == "ref")
+							(*ref_align).counter('+',paf.target_start);
+						else
+							(*raw_align).counter('+',paf.target_start);
+						
                         while(1)
                         {
                             i++;
                             if(paf.OperatorSign(i) || i >= paf.ciga.length()) break;
                             if(source == "ref")
                             {
-                                if( ref_vec_position < ref_vec_size )
+                                /*if( insert_ref_iter == insert_ref_iter_end && vector_not_full )
+								{
+									(*insert_ref_iter).add_allele(paf.ciga[i]);
+                                    insert_ref_iter++;
+								}
+								else
+								{
+									vector_not_full = false;
+									Base_allele* temp = new Base_allele();
+                                    (*temp).add_allele(paf.ciga[i]);
+                                    (*ref_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
+								}*/
+								
+								if( ref_vec_position < ref_vec_size )
                                 {
                                     (*insert_ref_iter).add_allele(paf.ciga[i]);
 
@@ -169,8 +190,6 @@ void Genome::passPAF(int argc, char* argv[], std::string source)
                                     (*temp).add_allele(paf.ciga[i]);
                                     (*ref_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
                                 }
-
-                                (*ref_align).counter('+',paf.target_start);
                             }
                             else
                             {
@@ -187,9 +206,8 @@ void Genome::passPAF(int argc, char* argv[], std::string source)
                                     (*temp).add_allele(paf.ciga[i]);
                                     (*raw_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
                                 }
-
-                                (*raw_align).counter('+',paf.target_start);
                             }
+							
                         }
                     }
                 }
@@ -205,7 +223,7 @@ int main(int argc, char* argv[])
 
     genome.loadDraft( argc-- , argv++ );
 
-    genome.passPAF( argc-- , argv++ , "ref" );
+    genome.parsePAF( argc-- , argv++ , "ref" );
     if(argc==1)
     {
         for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
@@ -225,7 +243,7 @@ int main(int argc, char* argv[])
                 {
                     std::cout << (*output_iter).contig_name << "\t"
                               << i << "\t"
-                              << (*output_iter).sequence[i] << "\t";
+                              << '-' << "\t";
 
                     if(ref_insert_size>0)
                         (*ref_insert_iter).show(true);
@@ -235,7 +253,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    genome.passPAF( argc , argv , "raw" );
+    genome.parsePAF( argc , argv , "raw" );
 
     for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
     {
@@ -259,7 +277,7 @@ int main(int argc, char* argv[])
             {
                 std::cout << (*output_iter).contig_name << "\t"
                           << i << "\t"
-                          << (*output_iter).sequence[i] << "\t";
+                          << '-' << "\t";
 
                 if(ref_insert_size>0)
                     (*ref_insert_iter).show(false);
