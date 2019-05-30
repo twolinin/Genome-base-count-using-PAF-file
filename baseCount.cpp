@@ -51,33 +51,31 @@ void Genome::loadDraft(int argc, char* argv[])
         Contig* current_contig = new Contig();
         draft_genome >> (*current_contig).contig_name;
         draft_genome >> (*current_contig).sequence;
-		
-		//std::cout << "create array " << "\t"
-		//          << (*current_contig).contig_name << "\t" 
-		//          << (*current_contig).sequence.length() << "\n";
-		
+		//std::cout << "create array " << "\t" << (*current_contig).contig_name << "\t" << (*current_contig).sequence.length() << "\n";
         // check current contig not empty line
         if( (*current_contig).contig_name.length()==0 || (*current_contig).sequence.length()==0 )break;
         // split '>'
         (*current_contig).contig_name = (*current_contig).contig_name.substr(1,(*current_contig).contig_name.length()-1);
-        // create two arrays to store alignment infomation
-        (*current_contig).ref_align.base_count = new Base_allele[(*current_contig).sequence.length()];
-        (*current_contig).raw_align.base_count = new Base_allele[(*current_contig).sequence.length()];
-        // initial all array
-        for( int i = 0 ; i < (*current_contig).sequence.length() ; i++ )
-		{
-            (*current_contig).ref_align.base_count[i].initial();
-            (*current_contig).raw_align.base_count[i].initial();
-		}
         // push current contig/chromosome
         contigs.push_back((*current_contig));
-        //std::cout << (*current_contig).contig_name << "\t" << (*current_contig).sequence.length() <<"\n";
     }
 }
 
-void Genome::parsePAF(int argc, char* argv[], std::string source)
+void Genome::parsePAF(int argc, char* argv[])
 {
-    std::ifstream paf_file(argv[1]);
+	// create all contigs with align table
+	for( std::vector<Contig>::iterator current_contig = contigs.begin() ; current_contig != contigs.end() ; ++current_contig )
+	{
+		Align* alignTable = new Align();
+		(*alignTable).base_count = new Base_allele[(*current_contig).sequence.length()];
+		
+		for( int position = 0 ; position < (*current_contig).sequence.length() ; position++ )
+			(*alignTable).base_count[position].initial();
+		
+		(*current_contig).alignVec.push_back((*alignTable));
+	}
+
+	std::ifstream paf_file(argv[1]);
 
     while( paf_file && paf_file.is_open() )
     {
@@ -98,10 +96,6 @@ void Genome::parsePAF(int argc, char* argv[], std::string source)
 
         if( paf.query_name.length() == 0 ) break;
 
-        //std::cout << paf.query_name  << "\t" << paf.query_start  << "\t" << paf.query_end  << "\t"
-        //          << paf.target_name << "\t" << paf.target_start << "\t" << paf.target_end << "\t"
-        //          << paf.strand << "\n";
-
         while(paf_file && paf_file.is_open())
         {
             std::string identity_ciga;
@@ -110,104 +104,60 @@ void Genome::parsePAF(int argc, char* argv[], std::string source)
 
             if(!identity_ciga.compare("cs:Z:"))
             {
-                std::vector<Contig>::iterator contig_iter;
+                std::vector<Contig>::iterator current_contig;
 
-                for( contig_iter = contigs.begin(); contig_iter != contigs.end(); ++contig_iter )
-                    if( (*contig_iter).contig_name == paf.target_name )
+                for( current_contig = contigs.begin(); current_contig != contigs.end(); ++current_contig )
+                    if( (*current_contig).contig_name == paf.target_name )
                         break;
 
-                Align* ref_align = &(*contig_iter).ref_align;
-                Align* raw_align = &(*contig_iter).raw_align;
+				std::vector<Align>::iterator current_contig_alignTable = (*current_contig).alignVec.end()-1;
 
-                int i=5;
-                while( i < paf.ciga.length() )
+                int position=5;
+                while( position < paf.ciga.length() )
                 {
-					if( paf.ciga[i] == '=' || paf.ciga[i] == '-' )
+					if( paf.ciga[position] == '=' || paf.ciga[position] == '-' )
                     {
-                        bool del = paf.ciga[i] == '-';
+                        bool del = paf.ciga[position] == '-';
                         while(1)
                         {
-							i++;
-                            if( paf.OperatorSign(i) || i >= paf.ciga.length() ) break;
+							position++;
+                            if( paf.OperatorSign(position) || position >= paf.ciga.length() ) break;
 
-                            source == "ref" ? (*ref_align).counter( del ? '-' : paf.ciga[i], paf.target_start )
-                                            : (*raw_align).counter( del ? '-' : paf.ciga[i], paf.target_start );
+							(*current_contig_alignTable).counter( del ? '-' : paf.ciga[position], paf.target_start );
                         }
                     }
-                    else if( paf.ciga[i] == '*' )
+                    else if( paf.ciga[position] == '*' )
                     {
-                        i+=3;
-                        source == "ref" ? (*ref_align).counter(paf.ciga[i-1],paf.target_start)
-                                        : (*raw_align).counter(paf.ciga[i-1],paf.target_start);
+                        position+=3;
+						(*current_contig_alignTable).counter(paf.ciga[position-1],paf.target_start);
                     }
 
-                    else if( paf.ciga[i] == '+' )
+                    else if( paf.ciga[position] == '+' )
                     {
-                        std::vector<Base_allele>::iterator insert_ref_iter = (*ref_align).base_count[paf.target_start].InsertionVec.begin();
-						//std::vector<Base_allele>::iterator insert_ref_iter_end = (*ref_align).base_count[paf.target_start].InsertionVec.end();
-                        int ref_vec_size = (*ref_align).base_count[paf.target_start].InsertionVec.size();
-                        int ref_vec_position = 0;
-						bool vector_not_full = false;
+						std::vector<Base_allele>::iterator insert_ref_iter     = (*current_contig_alignTable).base_count[paf.target_start].InsertionVec.begin();
+						std::vector<Base_allele>::iterator insert_ref_iter_end = (*current_contig_alignTable).base_count[paf.target_start].InsertionVec.end();
 						
-						std::vector<Base_allele>::iterator insert_raw_iter = (*raw_align).base_count[paf.target_start].InsertionVec.begin();
-						int raw_vec_size = (*raw_align).base_count[paf.target_start].InsertionVec.size();
-                        int raw_vec_position = 0;
+						bool vector_not_full = true;
 						
-						if(source == "ref")
-							(*ref_align).counter('+',paf.target_start);
-						else
-							(*raw_align).counter('+',paf.target_start);
+						(*current_contig_alignTable).counter('+',paf.target_start);
 						
-                        while(1)
+						while(1)
                         {
-                            i++;
-                            if(paf.OperatorSign(i) || i >= paf.ciga.length()) break;
-                            if(source == "ref")
-                            {
-                                /*if( insert_ref_iter == insert_ref_iter_end && vector_not_full )
-								{
-									(*insert_ref_iter).add_allele(paf.ciga[i]);
-                                    insert_ref_iter++;
-								}
-								else
-								{
-									vector_not_full = false;
-									Base_allele* temp = new Base_allele();
-                                    (*temp).add_allele(paf.ciga[i]);
-                                    (*ref_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
-								}*/
-								
-								if( ref_vec_position < ref_vec_size )
-                                {
-                                    (*insert_ref_iter).add_allele(paf.ciga[i]);
+                            position++;
+                            if( paf.OperatorSign(position) || position >= paf.ciga.length() ) break;
 
-                                    insert_ref_iter++;
-                                    ref_vec_position++;
-                                }
-                                else
-                                {
-                                    Base_allele* temp = new Base_allele();
-                                    (*temp).add_allele(paf.ciga[i]);
-                                    (*ref_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
-                                }
-                            }
-                            else
-                            {
-                                if( raw_vec_position < raw_vec_size )
-                                {
-                                    (*insert_raw_iter).add_allele(paf.ciga[i]);
-
-                                    insert_raw_iter++;
-                                    raw_vec_position++;
-                                }
-                                else
-                                {
-                                    Base_allele* temp = new Base_allele();
-                                    (*temp).add_allele(paf.ciga[i]);
-                                    (*raw_align).base_count[paf.target_start].InsertionVec.push_back((*temp));
-                                }
-                            }
-							
+                            if( insert_ref_iter != insert_ref_iter_end && vector_not_full )
+							{
+								(*insert_ref_iter).add_allele(paf.ciga[position]);
+                                insert_ref_iter++;
+							}
+							else
+							{
+								vector_not_full = false;
+								Base_allele* temp = new Base_allele();
+                                (*temp).add_allele(paf.ciga[position]);
+                                (*current_contig_alignTable).base_count[paf.target_start].InsertionVec.push_back((*temp));
+							}
                         }
                     }
                 }
@@ -222,77 +172,51 @@ int main(int argc, char* argv[])
     Genome genome;
 
     genome.loadDraft( argc-- , argv++ );
-
-    genome.parsePAF( argc-- , argv++ , "ref" );
-    if(argc==1)
+	
+	while( argc > 1 )
+	{
+		genome.parsePAF( argc-- , argv++ );
+	}
+	
+	for(std::vector<Contig>::iterator output_contig = genome.contigs.begin(); output_contig != genome.contigs.end(); ++output_contig)
     {
-        for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
+        for(int position = 0 ; position < (*output_contig).sequence.length() ; position++ )
         {
-            for(int i =0 ; i < (*output_iter).sequence.length() ; i++ )
-            {
-                std::cout << (*output_iter).contig_name << "\t"
-                          << i << "\t"
-                          << (*output_iter).sequence[i] << "\t";
+			std::cout << (*output_contig).contig_name << "\t"
+                      << position << "\t"
+                      << (*output_contig).sequence[position] << "\t";
 
-                (*output_iter).ref_align.base_count[i].show(true);
+			int max_insertion_size = 0;
+				
+			for(std::vector<Align>::iterator alignTable = (*output_contig).alignVec.begin() ; alignTable != (*output_contig).alignVec.end() ; ++alignTable )
+			{
+				(*alignTable).base_count[position].show(false);
+					
+				max_insertion_size = max_insertion_size > (*alignTable).base_count[position].InsertionVec.size() 
+				                   ? max_insertion_size : (*alignTable).base_count[position].InsertionVec.size();
+			}
+				
+			std::cout<< "\n";
 
-                std::vector<Base_allele>::iterator ref_insert_iter = (*output_iter).ref_align.base_count[i].InsertionVec.begin();
-                int ref_insert_size = (*output_iter).ref_align.base_count[i].InsertionVec.size();
-
-                for( ref_insert_iter; ref_insert_size > 0 ; ++ref_insert_iter, ref_insert_size--)
-                {
-                    std::cout << (*output_iter).contig_name << "\t"
-                              << i << "\t"
-                              << '-' << "\t";
-
-                    if(ref_insert_size>0)
-                        (*ref_insert_iter).show(true);
-                }
-            }
-        }
-        return 0;
-    }
-
-    genome.parsePAF( argc , argv , "raw" );
-
-    for(std::vector<Contig>::iterator output_iter = genome.contigs.begin(); output_iter != genome.contigs.end(); ++output_iter)
-    {
-        for(int i =0 ; i < (*output_iter).sequence.length() ; i++ )
-        {
-            std::cout << (*output_iter).contig_name << "\t"
-                      << i << "\t"
-                      << (*output_iter).sequence[i] << "\t";
-
-            (*output_iter).ref_align.base_count[i].show(false);
-            (*output_iter).raw_align.base_count[i].show(true);
-
-            std::vector<Base_allele>::iterator ref_insert_iter = (*output_iter).ref_align.base_count[i].InsertionVec.begin();
-            std::vector<Base_allele>::iterator raw_insert_iter = (*output_iter).raw_align.base_count[i].InsertionVec.begin();
-            int ref_insert_size = (*output_iter).ref_align.base_count[i].InsertionVec.size();
-            int raw_insert_size = (*output_iter).raw_align.base_count[i].InsertionVec.size();
-
-            for( ref_insert_iter, raw_insert_iter ;
-                 ref_insert_size > 0 || raw_insert_size > 0 ;
-                 ++ref_insert_iter, ++raw_insert_iter, ref_insert_size--, raw_insert_size-- )
-            {
-                std::cout << (*output_iter).contig_name << "\t"
-                          << i << "\t"
+			for( int insertion_stratum = 1 ; insertion_stratum <= max_insertion_size ; insertion_stratum++ )
+			{
+				std::cout << (*output_contig).contig_name << "\t"
+                          << position << "\t"
                           << '-' << "\t";
-
-                if(ref_insert_size>0)
-                    (*ref_insert_iter).show(false);
-                else
-                    std::cout << "0\t0\t0\t0\t0\t0\t";
-
-                if(raw_insert_size>0)
-                    (*raw_insert_iter).show(true);
-                else
-                    std::cout << "0\t0\t0\t0\t0\t0\n";
-            }
-
-
+					
+				for(std::vector<Align>::iterator alignTable = (*output_contig).alignVec.begin() ; alignTable != (*output_contig).alignVec.end() ; ++alignTable )
+				{
+					if( (*alignTable).base_count[position].InsertionVec.size() >= insertion_stratum )
+					{
+						std::vector<Base_allele>::iterator insertion_iter = (*alignTable).base_count[position].InsertionVec.begin() + insertion_stratum - 1;
+						(*insertion_iter).show(false);
+					}
+					else
+						std::cout << "0\t0\t0\t0\t0\t0\t";
+				}
+				std::cout<<"\n";
+			}	
         }
-
     }
 
     return 0;

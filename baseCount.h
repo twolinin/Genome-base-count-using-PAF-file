@@ -24,7 +24,7 @@ struct PAF_format
 
 struct Base_allele
 {
-    bool initial();
+    void initial();
     void add_allele(char allele);
     void show(bool EOL);
 
@@ -40,7 +40,7 @@ struct Base_allele
 struct Align
 {
     void counter(char allele, int& position);
-
+	
     Base_allele *base_count;
 };
 
@@ -48,14 +48,17 @@ struct Contig
 {
     std::string contig_name;
     std::string sequence;
-    Align ref_align;
-    Align raw_align;
+	
+    //Align ref_align;
+    //Align raw_align;
+	
+	std::vector<Align> alignVec;
 };
 
 struct Genome
 {
     void loadDraft(int argc, char* argv[]);
-    void passPAF(int argc, char* argv[], std::string source);
+    void parsePAF(int argc, char* argv[]);
 
     std::vector<Contig> contigs;
 };
