@@ -21,7 +21,7 @@ struct PAF_format
     int mapping_quality;
     std::string ciga;
 };
-
+    
 struct Base_allele
 {
     void initial();
@@ -40,7 +40,7 @@ struct Base_allele
 struct Align
 {
     void counter(char allele, int& position);
-	
+    
     Base_allele *base_count;
 };
 
@@ -48,11 +48,7 @@ struct Contig
 {
     std::string contig_name;
     std::string sequence;
-	
-    //Align ref_align;
-    //Align raw_align;
-	
-	std::vector<Align> alignVec;
+    std::vector<Align> alignVec;
 };
 
 struct Genome
