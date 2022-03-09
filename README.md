@@ -1,4 +1,4 @@
-# create paf file using minimap2
+# create paf file using minimap2 
 
 --cs=long is necessary parameter
 
